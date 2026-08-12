@@ -1,18 +1,341 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
-# Other files and folders
-.settings/
+-- Status Fitur
+local isInteractOn = false
+local isAutoClickOn = false
+local isAutoWalkOn = false
+local isTweenGardenOn = false
+local currentTween = nil
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
+-- ==========================================
+-- MEMBUAT GUI UTAMA
+-- ==========================================
+local SpeedHubGui = Instance.new("ScreenGui")
+SpeedHubGui.Name = "SpeedHubV4_Mobile_Garden_FastTween"
+SpeedHubGui.ResetOnSpawn = false
+local success = pcall(function() SpeedHubGui.Parent = game:GetService("CoreGui") end)
+if not success then SpeedHubGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+-- Frame Utama
+local MainFrame = Instance.new("Frame", SpeedHubGui)
+MainFrame.Size = UDim2.new(0, 230, 0, 240)
+MainFrame.Position = UDim2.new(0.5, -115, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+MainFrame.Draggable = true 
+
+-- Top Bar & Tombol Close
+local TopBar = Instance.new("Frame", MainFrame)
+TopBar.Size = UDim2.new(1, 0, 0, 30)
+TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TopBar.BorderSizePixel = 0
+
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(1, -30, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Text = " SPEED HUB V4"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.new(0, 30, 1, 0)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.Text = "X"
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.MouseButton1Click:Connect(function() SpeedHubGui:Destroy() end)
+
+-- Area Konten (Bisa di-scroll)
+local ScrollFrame = Instance.new("ScrollingFrame", MainFrame)
+ScrollFrame.Size = UDim2.new(1, 0, 1, -30)
+ScrollFrame.Position = UDim2.new(0, 0, 0, 30)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 420)
+ScrollFrame.ScrollBarThickness = 4
+
+local UIListLayout = Instance.new("UIListLayout", ScrollFrame)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- ==========================================
+-- FUNGSI PEMBUAT TOMBOL & INPUT
+-- ==========================================
+local function createToggle(text)
+    local btn = Instance.new("TextButton", ScrollFrame)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Text = text .. " : OFF"
+    btn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    return btn
+end
+
+local function createPointInput(placeholder)
+    local frame = Instance.new("Frame", ScrollFrame)
+    frame.Size = UDim2.new(0.9, 0, 0, 30)
+    frame.BackgroundTransparency = 1
+
+    local tb = Instance.new("TextBox", frame)
+    tb.Size = UDim2.new(0.75, -5, 1, 0)
+    tb.PlaceholderText = placeholder
+    tb.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    tb.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tb.Text = ""
+    tb.TextScaled = true
+
+    local setBtn = Instance.new("TextButton", frame)
+    setBtn.Size = UDim2.new(0.25, 0, 1, 0)
+    setBtn.Position = UDim2.new(0.75, 5, 0, 0)
+    setBtn.Text = "Set"
+    setBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 150)
+    setBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    
+    setBtn.MouseButton1Click:Connect(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local pos = char.HumanoidRootPart.Position
+            tb.Text = math.floor(pos.X) .. "," .. math.floor(pos.Y) .. "," .. math.floor(pos.Z)
+        end
+    end)
+    return tb
+end
+
+-- Membuat Elemen UI
+local SpaceTop = Instance.new("Frame", ScrollFrame); SpaceTop.Size = UDim2.new(1,0,0,2); SpaceTop.BackgroundTransparency = 1
+local ToggleInteract = createToggle("Auto Interact (E) [9]")
+local ToggleClick = createToggle("Auto Klik Kiri")
+
+-- Fitur Tween To Garden
+local GardenPoint = createPointInput("Titik Garden (X, Y, Z)")
+local ToggleTweenGarden = createToggle("Tween to Garden")
+
+local SpaceDivider = Instance.new("Frame", ScrollFrame); SpaceDivider.Size = UDim2.new(0.9,0,0,2); SpaceDivider.BackgroundColor3 = Color3.fromRGB(100,100,100)
+
+-- Fitur 4 Titik
+local Point1 = createPointInput("Titik 1 (X, Y, Z)")
+local Point2 = createPointInput("Titik 2 (X, Y, Z)")
+local Point3 = createPointInput("Titik 3 (X, Y, Z)")
+local Point4 = createPointInput("Titik 4 (X, Y, Z)")
+local ToggleWalk = createToggle("Auto Walk To [0]")
+
+-- ==========================================
+-- FUNGSI TOGGLE LOGIC
+-- ==========================================
+local function toggleInteractLogic()
+    isInteractOn = not isInteractOn
+    ToggleInteract.Text = isInteractOn and "Auto Interact (E) [9] : ON" or "Auto Interact (E) [9] : OFF"
+    ToggleInteract.BackgroundColor3 = isInteractOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
+end
+
+local function toggleWalkLogic()
+    isAutoWalkOn = not isAutoWalkOn
+    ToggleWalk.Text = isAutoWalkOn and "Auto Walk To [0] : ON" or "Auto Walk To [0] : OFF"
+    ToggleWalk.BackgroundColor3 = isAutoWalkOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
+
+    if isAutoWalkOn then
+        task.spawn(function()
+            task.spawn(function()
+                while isAutoWalkOn do
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                    task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                    
+                    local char = LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    if hum then hum.Jump = true end
+                    
+                    task.wait(1.95)
+                end
+            end)
+
+            while isAutoWalkOn do
+                local textInputs = {Point1.Text, Point2.Text, Point3.Text, Point4.Text}
+                
+                for i = 1, 4 do
+                    if not isAutoWalkOn then break end
+                    
+                    local str = textInputs[i]
+                    local x, y, z = str:match("([%-?%d%.]+)%s*,%s*([%-?%d%.]+)%s*,%s*([%-?%d%.]+)")
+                    
+                    if x and y and z then
+                        local targetPos = Vector3.new(tonumber(x), tonumber(y), tonumber(z))
+                        local char = LocalPlayer.Character
+                        local hum = char and char:FindFirstChildOfClass("Humanoid")
+                        
+                        if hum then
+                            hum:MoveTo(targetPos)
+                            
+                            local reached = false
+                            local connection
+                            connection = hum.MoveToFinished:Connect(function() reached = true end)
+                            
+                            local timeout = 0
+                            while not reached and isAutoWalkOn and timeout < 80 do
+                                task.wait(0.1)
+                                timeout = timeout + 1
+                            end
+                            
+                            if connection then connection:Disconnect() end
+                        end
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    else
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and char:FindFirstChild("HumanoidRootPart") then
+            hum:MoveTo(char.HumanoidRootPart.Position)
+        end
+    end
+end
+
+local function toggleTweenGardenLogic()
+    isTweenGardenOn = not isTweenGardenOn
+    ToggleTweenGarden.Text = isTweenGardenOn and "Tween to Garden : ON" or "Tween to Garden : OFF"
+    ToggleTweenGarden.BackgroundColor3 = isTweenGardenOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
+
+    if isTweenGardenOn then
+        task.spawn(function()
+            local str = GardenPoint.Text
+            local x, y, z = str:match("([%-?%d%.]+)%s*,%s*([%-?%d%.]+)%s*,%s*([%-?%d%.]+)")
+            
+            if x and y and z then
+                local targetPos = Vector3.new(tonumber(x), tonumber(y), tonumber(z))
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                
+                if hrp and hum then
+                    local tweenSpeed = 50 -- KECEPATAN DITINGKATKAN MENJADI 50 STUDS/DETIK
+                    
+                    -- KUNCI UTAMA: Pembekuan fisika & gravitasi
+                    hrp.Anchored = true
+                    hum.PlatformStand = true
+
+                    -- TAHAP 1: Naik Vertikal Ke Ketinggian Y Target
+                    local startPos = hrp.Position
+                    local heightPos = Vector3.new(startPos.X, targetPos.Y, startPos.Z)
+                    local distUp = math.abs(targetPos.Y - startPos.Y)
+                    
+                    if distUp > 0.5 then
+                        local timeUp = distUp / tweenSpeed
+                        local tweenInfoUp = TweenInfo.new(timeUp, Enum.EasingStyle.Linear)
+                        currentTween = TweenService:Create(hrp, tweenInfoUp, {CFrame = CFrame.new(heightPos)})
+                        currentTween:Play()
+                        
+                        while isTweenGardenOn and currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing do
+                            task.wait(0.05)
+                        end
+                    end
+                    
+                    -- TAHAP 2: Maju Horisontal Ke Titik Garden
+                    if isTweenGardenOn and hrp then
+                        local currentPos = hrp.Position
+                        local distGarden = (Vector3.new(currentPos.X, 0, currentPos.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
+                        
+                        if distGarden > 0.5 then
+                            local timeGarden = distGarden / tweenSpeed
+                            local tweenInfoGarden = TweenInfo.new(timeGarden, Enum.EasingStyle.Linear)
+                            currentTween = TweenService:Create(hrp, tweenInfoGarden, {CFrame = CFrame.new(targetPos)})
+                            currentTween:Play()
+                            
+                            while isTweenGardenOn and currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing do
+                                task.wait(0.05)
+                            end
+                        end
+                    end
+
+                    -- Mengembalikan Fisika Setelah Sampai Tujuan
+                    hrp.Anchored = false
+                    hum.PlatformStand = false
+                    
+                    -- Matikan Toggle Secara Otomatis
+                    isTweenGardenOn = false
+                    ToggleTweenGarden.Text = "Tween to Garden : OFF"
+                    ToggleTweenGarden.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+                end
+            else
+                isTweenGardenOn = false
+                ToggleTweenGarden.Text = "Tween to Garden : OFF"
+                ToggleTweenGarden.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+            end
+        end)
+    else
+        -- Hentikan Tween jika dimatikan manual
+        if currentTween then
+            currentTween:Cancel()
+            currentTween = nil
+        end
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hrp then hrp.Anchored = false end
+        if hum then hum.PlatformStand = false end
+    end
+end
+
+-- ==========================================
+-- MENGHUBUNGKAN TOMBOL KLIK
+-- ==========================================
+ToggleInteract.MouseButton1Click:Connect(toggleInteractLogic)
+ToggleWalk.MouseButton1Click:Connect(toggleWalkLogic)
+ToggleTweenGarden.MouseButton1Click:Connect(toggleTweenGardenLogic)
+
+ToggleClick.MouseButton1Click:Connect(function()
+    isAutoClickOn = not isAutoClickOn
+    ToggleClick.Text = isAutoClickOn and "Auto Klik Kiri : ON" or "Auto Klik Kiri : OFF"
+    ToggleClick.BackgroundColor3 = isAutoClickOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
+end)
+
+-- ==========================================
+-- MENGHUBUNGKAN KEYBINDS (9 dan 0)
+-- ==========================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end 
+
+    if input.KeyCode == Enum.KeyCode.Nine then
+        toggleInteractLogic()
+    elseif input.KeyCode == Enum.KeyCode.Zero then
+        toggleWalkLogic()
+    end
+end)
+
+-- ==========================================
+-- LOOPING BACKGROUND (Auto Interact & Auto Click)
+-- ==========================================
+task.spawn(function()
+    while true do
+        if isInteractOn then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        end
+        task.wait(0.02)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if isAutoClickOn then
+            local char = LocalPlayer.Character
+            if char then
+                local equippedTool = char:FindFirstChildOfClass("Tool")
+                if equippedTool then equippedTool:Activate() end
+            end
+            pcall(function() if mouse1click then mouse1click() end end)
+        end
+        task.wait(60)
+    end
+end)
