@@ -17,7 +17,7 @@ local currentTween = nil
 -- MEMBUAT GUI UTAMA
 -- ==========================================
 local SpeedHubGui = Instance.new("ScreenGui")
-SpeedHubGui.Name = "SpeedHubV4_Mobile_Garden_FastTween"
+SpeedHubGui.Name = "SpeedHubV4_Mobile_Garden_FastE"
 SpeedHubGui.ResetOnSpawn = false
 local success = pcall(function() SpeedHubGui.Parent = game:GetService("CoreGui") end)
 if not success then SpeedHubGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
@@ -219,9 +219,8 @@ local function toggleTweenGardenLogic()
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 
                 if hrp and hum then
-                    local tweenSpeed = 50 -- KECEPATAN DITINGKATKAN MENJADI 50 STUDS/DETIK
+                    local tweenSpeed = 50
                     
-                    -- KUNCI UTAMA: Pembekuan fisika & gravitasi
                     hrp.Anchored = true
                     hum.PlatformStand = true
 
@@ -258,11 +257,9 @@ local function toggleTweenGardenLogic()
                         end
                     end
 
-                    -- Mengembalikan Fisika Setelah Sampai Tujuan
                     hrp.Anchored = false
                     hum.PlatformStand = false
                     
-                    -- Matikan Toggle Secara Otomatis
                     isTweenGardenOn = false
                     ToggleTweenGarden.Text = "Tween to Garden : OFF"
                     ToggleTweenGarden.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
@@ -274,7 +271,6 @@ local function toggleTweenGardenLogic()
             end
         end)
     else
-        -- Hentikan Tween jika dimatikan manual
         if currentTween then
             currentTween:Cancel()
             currentTween = nil
@@ -316,13 +312,14 @@ end)
 -- ==========================================
 -- LOOPING BACKGROUND (Auto Interact & Auto Click)
 -- ==========================================
+-- SPAM E DIPERCEPAT MENJADI 0.01 DETIK
 task.spawn(function()
     while true do
         if isInteractOn then
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         end
-        task.wait(0.02)
+        task.wait(0.01)
     end
 end)
 
