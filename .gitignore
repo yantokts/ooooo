@@ -2,42 +2,43 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
 -- Status Fitur
 local isInteractOn = false
 local isAutoClickOn = false
 local isAutoWalkOn = false
 local isTweenGardenOn = false
+local isMinimized = false
 local currentTween = nil
 
 -- ==========================================
 -- MEMBUAT GUI UTAMA
 -- ==========================================
 local SpeedHubGui = Instance.new("ScreenGui")
-SpeedHubGui.Name = "SpeedHubV4_Mobile_Garden_FastE"
+SpeedHubGui.Name = "SpeedHubV4_Mobile_Stable"
 SpeedHubGui.ResetOnSpawn = false
 local success = pcall(function() SpeedHubGui.Parent = game:GetService("CoreGui") end)
 if not success then SpeedHubGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
 -- Frame Utama
 local MainFrame = Instance.new("Frame", SpeedHubGui)
-MainFrame.Size = UDim2.new(0, 230, 0, 240)
+MainFrame.Size = UDim2.new(0, 230, 0, 250)
 MainFrame.Position = UDim2.new(0.5, -115, 0.2, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Draggable = true 
 
--- Top Bar & Tombol Close
+-- Top Bar & Tombol Navigasi
 local TopBar = Instance.new("Frame", MainFrame)
 TopBar.Size = UDim2.new(1, 0, 0, 30)
 TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TopBar.BorderSizePixel = 0
 
 local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(1, -30, 1, 0)
+Title.Size = UDim2.new(1, -60, 1, 0)
 Title.BackgroundTransparency = 1
 Title.Text = " SPEED HUB V4"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -54,12 +55,20 @@ CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.BorderSizePixel = 0
 CloseBtn.MouseButton1Click:Connect(function() SpeedHubGui:Destroy() end)
 
--- Area Konten (Bisa di-scroll)
+local MinimizeBtn = Instance.new("TextButton", TopBar)
+MinimizeBtn.Size = UDim2.new(0, 30, 1, 0)
+MinimizeBtn.Position = UDim2.new(1, -60, 0, 0)
+MinimizeBtn.Text = "-"
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.BorderSizePixel = 0
+
+-- Area Konten
 local ScrollFrame = Instance.new("ScrollingFrame", MainFrame)
 ScrollFrame.Size = UDim2.new(1, 0, 1, -30)
 ScrollFrame.Position = UDim2.new(0, 0, 0, 30)
 ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 420)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 430)
 ScrollFrame.ScrollBarThickness = 4
 
 local UIListLayout = Instance.new("UIListLayout", ScrollFrame)
@@ -67,8 +76,22 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
+-- Logika Minimize
+MinimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MinimizeBtn.Text = "+"
+        MainFrame.Size = UDim2.new(0, 230, 0, 30)
+        ScrollFrame.Visible = false
+    else
+        MinimizeBtn.Text = "-"
+        MainFrame.Size = UDim2.new(0, 230, 0, 250)
+        ScrollFrame.Visible = true
+    end
+end)
+
 -- ==========================================
--- FUNGSI PEMBUAT TOMBOL & INPUT
+-- FUNGSI UI
 -- ==========================================
 local function createToggle(text)
     local btn = Instance.new("TextButton", ScrollFrame)
@@ -85,22 +108,18 @@ local function createPointInput(placeholder)
     local frame = Instance.new("Frame", ScrollFrame)
     frame.Size = UDim2.new(0.9, 0, 0, 30)
     frame.BackgroundTransparency = 1
-
     local tb = Instance.new("TextBox", frame)
     tb.Size = UDim2.new(0.75, -5, 1, 0)
     tb.PlaceholderText = placeholder
     tb.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     tb.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tb.Text = ""
     tb.TextScaled = true
-
     local setBtn = Instance.new("TextButton", frame)
     setBtn.Size = UDim2.new(0.25, 0, 1, 0)
     setBtn.Position = UDim2.new(0.75, 5, 0, 0)
     setBtn.Text = "Set"
     setBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 150)
     setBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    
     setBtn.MouseButton1Click:Connect(function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
@@ -111,18 +130,18 @@ local function createPointInput(placeholder)
     return tb
 end
 
--- Membuat Elemen UI
+-- ==========================================
+-- ELEMEN UI
+-- ==========================================
 local SpaceTop = Instance.new("Frame", ScrollFrame); SpaceTop.Size = UDim2.new(1,0,0,2); SpaceTop.BackgroundTransparency = 1
-local ToggleInteract = createToggle("Auto Interact (E) [9]")
-local ToggleClick = createToggle("Auto Klik Kiri")
 
--- Fitur Tween To Garden
+local ToggleClick = createToggle("Auto Klik Kiri")
 local GardenPoint = createPointInput("Titik Garden (X, Y, Z)")
 local ToggleTweenGarden = createToggle("Tween to Garden")
+local ToggleInteract = createToggle("Auto Interact (E) [9]")
 
 local SpaceDivider = Instance.new("Frame", ScrollFrame); SpaceDivider.Size = UDim2.new(0.9,0,0,2); SpaceDivider.BackgroundColor3 = Color3.fromRGB(100,100,100)
 
--- Fitur 4 Titik
 local Point1 = createPointInput("Titik 1 (X, Y, Z)")
 local Point2 = createPointInput("Titik 2 (X, Y, Z)")
 local Point3 = createPointInput("Titik 3 (X, Y, Z)")
@@ -130,7 +149,7 @@ local Point4 = createPointInput("Titik 4 (X, Y, Z)")
 local ToggleWalk = createToggle("Auto Walk To [0]")
 
 -- ==========================================
--- FUNGSI TOGGLE LOGIC
+-- LOGIKA FITUR
 -- ==========================================
 local function toggleInteractLogic()
     isInteractOn = not isInteractOn
@@ -138,6 +157,7 @@ local function toggleInteractLogic()
     ToggleInteract.BackgroundColor3 = isInteractOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
 end
 
+-- FUNGSI AUTO WALK TO DIKEMBALIKAN
 local function toggleWalkLogic()
     isAutoWalkOn = not isAutoWalkOn
     ToggleWalk.Text = isAutoWalkOn and "Auto Walk To [0] : ON" or "Auto Walk To [0] : OFF"
@@ -145,6 +165,7 @@ local function toggleWalkLogic()
 
     if isAutoWalkOn then
         task.spawn(function()
+            -- Sistem Auto Jump
             task.spawn(function()
                 while isAutoWalkOn do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
@@ -159,6 +180,7 @@ local function toggleWalkLogic()
                 end
             end)
 
+            -- Sistem Pergerakan Patroli
             while isAutoWalkOn do
                 local textInputs = {Point1.Text, Point2.Text, Point3.Text, Point4.Text}
                 
@@ -194,6 +216,7 @@ local function toggleWalkLogic()
             end
         end)
     else
+        -- Berhenti ketika dimatikan
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if hum and char:FindFirstChild("HumanoidRootPart") then
@@ -211,7 +234,6 @@ local function toggleTweenGardenLogic()
         task.spawn(function()
             local str = GardenPoint.Text
             local x, y, z = str:match("([%-?%d%.]+)%s*,%s*([%-?%d%.]+)%s*,%s*([%-?%d%.]+)")
-            
             if x and y and z then
                 local targetPos = Vector3.new(tonumber(x), tonumber(y), tonumber(z))
                 local char = LocalPlayer.Character
@@ -219,47 +241,28 @@ local function toggleTweenGardenLogic()
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 
                 if hrp and hum then
-                    local tweenSpeed = 50
-                    
-                    hrp.Anchored = true
                     hum.PlatformStand = true
-
-                    -- TAHAP 1: Naik Vertikal Ke Ketinggian Y Target
-                    local startPos = hrp.Position
-                    local heightPos = Vector3.new(startPos.X, targetPos.Y, startPos.Z)
-                    local distUp = math.abs(targetPos.Y - startPos.Y)
+                    local tweenSpeed = 30
                     
-                    if distUp > 0.5 then
-                        local timeUp = distUp / tweenSpeed
-                        local tweenInfoUp = TweenInfo.new(timeUp, Enum.EasingStyle.Linear)
-                        currentTween = TweenService:Create(hrp, tweenInfoUp, {CFrame = CFrame.new(heightPos)})
+                    local function runTween(targetCFrame)
+                        local dist = (hrp.Position - targetCFrame.Position).Magnitude
+                        local time = dist / tweenSpeed
+                        local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
+                        currentTween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
                         currentTween:Play()
                         
                         while isTweenGardenOn and currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing do
+                            hrp.AssemblyLinearVelocity = Vector3.zero
                             task.wait(0.05)
                         end
                     end
-                    
-                    -- TAHAP 2: Maju Horisontal Ke Titik Garden
-                    if isTweenGardenOn and hrp then
-                        local currentPos = hrp.Position
-                        local distGarden = (Vector3.new(currentPos.X, 0, currentPos.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
-                        
-                        if distGarden > 0.5 then
-                            local timeGarden = distGarden / tweenSpeed
-                            local tweenInfoGarden = TweenInfo.new(timeGarden, Enum.EasingStyle.Linear)
-                            currentTween = TweenService:Create(hrp, tweenInfoGarden, {CFrame = CFrame.new(targetPos)})
-                            currentTween:Play()
-                            
-                            while isTweenGardenOn and currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing do
-                                task.wait(0.05)
-                            end
-                        end
-                    end
 
-                    hrp.Anchored = false
-                    hum.PlatformStand = false
+                    local startPos = hrp.Position
+                    runTween(CFrame.new(Vector3.new(startPos.X, targetPos.Y, startPos.Z)))
+                    if isTweenGardenOn then runTween(CFrame.new(targetPos)) end
                     
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hum.PlatformStand = false
                     isTweenGardenOn = false
                     ToggleTweenGarden.Text = "Tween to Garden : OFF"
                     ToggleTweenGarden.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
@@ -267,24 +270,18 @@ local function toggleTweenGardenLogic()
             else
                 isTweenGardenOn = false
                 ToggleTweenGarden.Text = "Tween to Garden : OFF"
-                ToggleTweenGarden.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
             end
         end)
     else
-        if currentTween then
-            currentTween:Cancel()
-            currentTween = nil
-        end
+        if currentTween then currentTween:Cancel(); currentTween = nil end
         local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hrp then hrp.Anchored = false end
         if hum then hum.PlatformStand = false end
     end
 end
 
 -- ==========================================
--- MENGHUBUNGKAN TOMBOL KLIK
+-- EVENT HANDLERS & KEYBINDS DIKEMBALIKAN
 -- ==========================================
 ToggleInteract.MouseButton1Click:Connect(toggleInteractLogic)
 ToggleWalk.MouseButton1Click:Connect(toggleWalkLogic)
@@ -296,12 +293,8 @@ ToggleClick.MouseButton1Click:Connect(function()
     ToggleClick.BackgroundColor3 = isAutoClickOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
 end)
 
--- ==========================================
--- MENGHUBUNGKAN KEYBINDS (9 dan 0)
--- ==========================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end 
-
     if input.KeyCode == Enum.KeyCode.Nine then
         toggleInteractLogic()
     elseif input.KeyCode == Enum.KeyCode.Zero then
@@ -309,27 +302,24 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ==========================================
--- LOOPING BACKGROUND (Auto Interact & Auto Click)
--- ==========================================
--- SPAM E DIPERCEPAT MENJADI 0.01 DETIK
-task.spawn(function()
-    while true do
-        if isInteractOn then
+-- SPAM E ULTRA FAST
+RunService.RenderStepped:Connect(function()
+    if isInteractOn then
+        for _ = 1, 3 do
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         end
-        task.wait(0.01)
     end
 end)
 
+-- AUTO CLICK LOOP
 task.spawn(function()
     while true do
         if isAutoClickOn then
             local char = LocalPlayer.Character
             if char then
-                local equippedTool = char:FindFirstChildOfClass("Tool")
-                if equippedTool then equippedTool:Activate() end
+                local tool = char:FindFirstChildOfClass("Tool")
+                if tool then tool:Activate() end
             end
             pcall(function() if mouse1click then mouse1click() end end)
         end
