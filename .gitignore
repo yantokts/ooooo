@@ -157,7 +157,6 @@ local function toggleInteractLogic()
     ToggleInteract.BackgroundColor3 = isInteractOn and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(50, 150, 50)
 end
 
--- FUNGSI AUTO WALK TO DIKEMBALIKAN
 local function toggleWalkLogic()
     isAutoWalkOn = not isAutoWalkOn
     ToggleWalk.Text = isAutoWalkOn and "Auto Walk To [0] : ON" or "Auto Walk To [0] : OFF"
@@ -165,7 +164,6 @@ local function toggleWalkLogic()
 
     if isAutoWalkOn then
         task.spawn(function()
-            -- Sistem Auto Jump
             task.spawn(function()
                 while isAutoWalkOn do
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
@@ -180,7 +178,6 @@ local function toggleWalkLogic()
                 end
             end)
 
-            -- Sistem Pergerakan Patroli
             while isAutoWalkOn do
                 local textInputs = {Point1.Text, Point2.Text, Point3.Text, Point4.Text}
                 
@@ -216,7 +213,6 @@ local function toggleWalkLogic()
             end
         end)
     else
-        -- Berhenti ketika dimatikan
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if hum and char:FindFirstChild("HumanoidRootPart") then
@@ -281,7 +277,7 @@ local function toggleTweenGardenLogic()
 end
 
 -- ==========================================
--- EVENT HANDLERS & KEYBINDS DIKEMBALIKAN
+-- EVENT HANDLERS & KEYBINDS
 -- ==========================================
 ToggleInteract.MouseButton1Click:Connect(toggleInteractLogic)
 ToggleWalk.MouseButton1Click:Connect(toggleWalkLogic)
@@ -302,17 +298,22 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- SPAM E ULTRA FAST
-RunService.RenderStepped:Connect(function()
-    if isInteractOn then
-        for _ = 1, 3 do
+-- ==========================================
+-- SPAM E INTERVAL 0.03 DETIK
+-- ==========================================
+task.spawn(function()
+    while true do
+        if isInteractOn then
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         end
+        task.wait(0.03) -- Jeda spesifik 0.03 detik
     end
 end)
 
+-- ==========================================
 -- AUTO CLICK LOOP
+-- ==========================================
 task.spawn(function()
     while true do
         if isAutoClickOn then
