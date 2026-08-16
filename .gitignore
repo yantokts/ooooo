@@ -299,7 +299,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ==========================================
--- SPAM E INTERVAL 0.03 DETIK
+-- SPAM E INTERVAL 0.02 DETIK
 -- ==========================================
 task.spawn(function()
     while true do
@@ -307,7 +307,7 @@ task.spawn(function()
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         end
-        task.wait(0.03) -- Jeda spesifik 0.03 detik
+        task.wait(0.02)
     end
 end)
 
