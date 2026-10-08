@@ -1,5 +1,5 @@
 -- ==========================================================
--- ADVANCED QUEUE TYPER & SPAMMER MOBILE UI (WITH USERNAME FOLLOW)
+-- ADVANCED QUEUE TYPER & SPAMMER MOBILE UI (WITH USERNAME FOLLOW & WALK)
 -- ==========================================================
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -9,14 +9,15 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Nama file untuk menyimpan konfigurasi
-local configFileName = "QueueTyper_SavedConfig_V2.json"
+local configFileName = "QueueTyper_SavedConfig_V3.json"
 
 -- Data konfigurasi default
 local configData = {
     username = "",
     autoSpamEnabled = false,
     autoJoinEnabled = false,
-    followUserEnabled = true
+    followUserEnabled = true,
+    followMoveEnabled = true -- Fitur baru: Berjalan ke arah player yang di-follow
 }
 
 -- Fungsi untuk menyimpan data ke file executor
@@ -39,6 +40,7 @@ local function loadConfig()
                 if decoded.autoSpamEnabled ~= nil then configData.autoSpamEnabled = decoded.autoSpamEnabled end
                 if decoded.autoJoinEnabled ~= nil then configData.autoJoinEnabled = decoded.autoJoinEnabled end
                 if decoded.followUserEnabled ~= nil then configData.followUserEnabled = decoded.followUserEnabled end
+                if decoded.followMoveEnabled ~= nil then configData.followMoveEnabled = decoded.followMoveEnabled end
             end
         end
     end)
@@ -75,11 +77,11 @@ ToggleButton.Draggable = true
 ToggleButton.Parent = ScreenGui
 Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 10)
 
--- Main Frame (Jendela Utama - Diperbesar agar pas dengan fitur baru)
+-- Main Frame (Jendela Utama - Diperbesar sedikit agar muat tombol baru)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 300, 0, 310)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -155)
+MainFrame.Size = UDim2.new(0, 300, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 128)
 MainFrame.BorderSizePixel = 2
@@ -101,7 +103,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -40, 1, 0)
 TitleLabel.Position = UDim2.new(0, 10, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "QUEUE MANAGER + FOLLOW"
+TitleLabel.Text = "QUEUE MANAGER + WALK TO"
 TitleLabel.TextColor3 = Color3.fromRGB(0, 255, 128)
 TitleLabel.TextSize = 11
 TitleLabel.Font = Enum.Font.Code
@@ -124,7 +126,7 @@ local ContentContainer = Instance.new("ScrollingFrame")
 ContentContainer.Size = UDim2.new(1, -16, 1, -50)
 ContentContainer.Position = UDim2.new(0, 8, 0, 42)
 ContentContainer.BackgroundTransparency = 1
-ContentContainer.CanvasSize = UDim2.new(0, 0, 0, 240)
+ContentContainer.CanvasSize = UDim2.new(0, 0, 0, 300)
 ContentContainer.ScrollBarThickness = 3
 ContentContainer.Parent = MainFrame
 
@@ -170,7 +172,6 @@ local function applyUsername()
         if not usernameBoxTarget then return end
         
         if usernameBoxTarget:IsA("TextBox") then
-            -- Hanya update jika teks berbeda agar tidak bentrok dengan ketikan manual user
             if usernameBoxTarget.Text ~= targetText then
                 usernameBoxTarget.Text = targetText
             end
@@ -213,7 +214,6 @@ local function pressKey(keyCode)
     end)
 end
 
--- Fungsi Klik yang Dipaksa Aktif Terus
 local function clickGuiObject(guiObject)
     if not guiObject then return end
     pcall(function()
@@ -227,12 +227,38 @@ local function clickGuiObject(guiObject)
     end)
 end
 
--- FITUR 0: Follow Username Loop (Secara berkala memastikan kotak input game sama persis dengan yang diketik)
+-- FITUR 0: Follow Username Loop (Sinkronisasi Teks Input Game)
 task.spawn(function()
     while true do
         if configData.followUserEnabled and configData.username ~= "" then
             pcall(function()
                 applyUsername()
+            end)
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- FITUR BARU: Berjalan otomatis (WalkTo) ke arah Username yang diketik
+task.spawn(function()
+    while true do
+        if configData.followMoveEnabled and configData.username ~= "" then
+            pcall(function()
+                local targetPlayer = Players:FindFirstChild(configData.username)
+                if targetPlayer and targetPlayer.Character then
+                    local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    local myChar = player.Character
+                    if targetRoot and myChar then
+                        local myHumanoid = myChar:FindFirstChild("Humanoid")
+                        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+                        if myHumanoid and myRoot then
+                            -- Hanya berjalan jika jaraknya cukup jauh agar tidak mondar-mandir patah-patah
+                            if (myRoot.Position - targetRoot.Position).Magnitude > 5 then
+                                myHumanoid:MoveTo(targetRoot.Position)
+                            end
+                        end
+                    end
+                end
             end)
         end
         task.wait(0.5)
@@ -256,7 +282,7 @@ task.spawn(function()
     end
 end)
 
--- FITUR 2: Auto Spam Join Request (Looping Tanpa Henti Setiap 1 Detik)
+-- FITUR 2: Auto Spam Join Request
 task.spawn(function()
     while true do
         if configData.autoJoinEnabled then
@@ -264,8 +290,6 @@ task.spawn(function()
                 applyUsername()
                 
                 local targetTextButton = nil
-                
-                -- Cek di PlayerGui terlebih dahulu
                 local pGui = player:FindFirstChild("PlayerGui")
                 if pGui then
                     local qGui = pGui:FindFirstChild("queueGui")
@@ -283,7 +307,6 @@ task.spawn(function()
                     end
                 end
                 
-                -- Fallback ke StarterGui jika belum ada di PlayerGui
                 if not targetTextButton then
                     local sQueueGui = StarterGui:FindFirstChild("queueGui")
                     if sQueueGui then
@@ -305,29 +328,32 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(1.0) -- Pastikan loop terus berjalan setiap 1 detik
+        task.wait(1.0)
     end
 end)
 
--- UI Toggle untuk Follow Username
+-- UI Toggles
 createToggleUI("Follow Username Input", configData.followUserEnabled, function(val)
     configData.followUserEnabled = val
     saveConfig()
 end)
 
--- UI Toggle untuk Auto Spam Q & E
+createToggleUI("WalkTo / Follow Player", configData.followMoveEnabled, function(val)
+    configData.followMoveEnabled = val
+    saveConfig()
+end)
+
 createToggleUI("Auto Spam Q & E", configData.autoSpamEnabled, function(val)
     configData.autoSpamEnabled = val
     saveConfig()
 end)
 
--- UI Toggle untuk Auto Spam Join Request
 createToggleUI("Spam Join (TextButton)", configData.autoJoinEnabled, function(val)
     configData.autoJoinEnabled = val
     saveConfig()
 end)
 
--- Tombol Buka/Tutup
+-- Tombol Buka/Tutup UI
 ToggleButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
